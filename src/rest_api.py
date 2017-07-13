@@ -14,7 +14,7 @@ if sys.version_info.major == 2:
     sys.setdefaultencoding('UTF8')
 
 
-logging.basicConfig(filename='error.log', level=logging.DEBUG)
+logging.basicConfig(filename='/tmp/error.log', level=logging.DEBUG)
 app = Flask(__name__)
 app.config.from_object('config')
 CORS(app)
