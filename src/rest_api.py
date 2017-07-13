@@ -7,6 +7,7 @@ import codecs
 import logging
 import urllib
 import config
+import license_scoring
 
 # Python2.x: Make default encoding as UTF-8
 if sys.version_info.major == 2:
@@ -29,18 +30,20 @@ def heart_beat():
 def stack_license():
     input_json = request.get_json()
     #Need to change this
-    response = { "stack_license": "Apache 2.0",
-        "outlier_license": [
-            {
-                "pkg1-ver1": "license",
-                "pkg2-ver2": "license"
-            }],
-        "conflict_license": [
-            {
-            "pkg1-ver1": "license",
-            "pkg1-ver2": "license"
-            }]
-    }
+    #response = { "stack_license": "Apache 2.0",
+    #    "outlier_license": [
+    #        {
+    #            "pkg1-ver1": "license",
+    #            "pkg2-ver2": "license"
+    #        }],
+    #    "conflict_license": [
+    #        {
+    #        "pkg1-ver1": "license",
+    #        "pkg1-ver2": "license"
+    #        }]
+    #}
+
+    response = license_scoring.license_scoring(input_json)
 
     return flask.jsonify(response)
 
