@@ -22,13 +22,27 @@ CORS(app)
 
 @app.route('/')
 def heart_beat():
-    return flask.jsonify({"PurposeOfLife": config.PURPOSE_OF_LIFE})
+    return flask.jsonify({"status": "ok"})
 
 
-@app.route('/give_back', methods=['POST'])
-def predict_and_score():
+@app.route('/api/v1/stack_license', methods=['POST'])
+def stack_license():
     input_json = request.get_json()
-    return flask.jsonify(input_json)
+    #Need to change this
+    response = { "stack_license": "Apache 2.0",
+        "outlier_license": [
+            {
+                "pkg1-ver1": "license",
+                "pkg2-ver2": "license"
+            }],
+        "conflict_license": [
+            {
+            "pkg1-ver1": "license",
+            "pkg1-ver2": "license"
+            }]
+    }
+
+    return flask.jsonify(response)
 
 
 if __name__ == "__main__":
