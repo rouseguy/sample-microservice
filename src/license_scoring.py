@@ -3,6 +3,7 @@ import pickle
 import itertools
 import pandas as pd
 
+
 available_licenses = [
     'PD',
     'MIT',
@@ -16,6 +17,35 @@ available_licenses = [
     'GPL V2+',
     'GPL V3+',
     'AGPL V3+']
+
+
+license_master_df = pd.DataFrame({"license": [],
+                       "category": [],
+                        "cat_rank": []})
+
+def license_master_add_df(name, category, rank,  license_master_df):
+    df_to_append = pd.DataFrame({"license": name,
+                                     "category": category,
+                                 "cat_rank": rank
+                                })
+
+    df = pd.concat([license_master_df, df_to_append], ignore_index=True)
+
+    return df
+
+license_master_df = license_master_add_df(['PD'], ['P'], [1], license_master_df)
+license_master_df = license_master_add_df(['MIT'], ['P'], [1], license_master_df)
+license_master_df = license_master_add_df(['BSD'], ['P'], [1], license_master_df)
+license_master_df = license_master_add_df(['APACHE'], ['P'], [1], license_master_df)
+license_master_df = license_master_add_df(['LGPL V2.1'], ['WP'], [2], license_master_df)
+license_master_df = license_master_add_df(['LGPL V2.1+'], ['WP'], [2], license_master_df)
+license_master_df = license_master_add_df(['LGPL V3+'], ['WP'], [2], license_master_df)
+license_master_df = license_master_add_df(['MPL 1.1'], ['WP'], [2], license_master_df)
+license_master_df = license_master_add_df(['GPL V2'], ['SP'], [3], license_master_df)
+license_master_df = license_master_add_df(['GPL V2+'], ['SP'], [3], license_master_df)
+license_master_df = license_master_add_df(['GPL V3+'], ['SP'], [3], license_master_df)
+license_master_df = license_master_add_df(['AGPL V3+'], ['NP'], [4], license_master_df)
+
 
 class AbstractGnosis(object):
     __metaclass__ = ABCMeta
@@ -44,6 +74,8 @@ class AbstractGnosis(object):
         """
         return
 
+
+
 class LicenseVertex:
     def __init__(self, arg_list):
         self.id = arg_list[0]
@@ -64,6 +96,8 @@ class LicenseVertex:
 
     def get_weight(self, neighbor):
         return self.adjacent[neighbor]
+
+
 
 class GnosisLicense(AbstractGnosis):
     def __init__(self):
@@ -157,6 +191,8 @@ class GnosisLicense(AbstractGnosis):
         """
         return
 
+
+
 def create_license_graph():
     g = GnosisLicense()
     pd = LicenseVertex(['PD', 'P'])
@@ -205,47 +241,7 @@ def create_license_graph():
 
     return g
 
-# This is the main function that does the scoring
-def license_scoring(payload):
-    payload_pd = create_df(payload)
 
-    list_of_licenses = list(payload_pd.license)
-
-    license_graph = create_license_graph()
-
-    # Check if input licenses are present in license graph
-    all_licenses_available_in_graph = licenses_avl(list_of_licenses)
-    conflict_response = ""
-
-    if all_licenses_available_in_graph == 1:
-        # not all licenses are available
-        s_license = ""
-        conflict_licenses = ""
-
-    else:
-
-        stack_license = license_graph.get_common_destination_license_vertex(list_of_licenses)
-
-        conflict_licenses = ""
-
-        if stack_license is None:
-            s_license = ''
-            conflict_licenses = get_conflict_licenses(license_graph, list_of_licenses)
-        else:
-            s_license = [i.id for i in stack_license][0]
-
-    # Create response object
-
-    # Create response for conflict licenses
-    
-    if len(conflict_licenses) > 0:
-        conflict_license_records = payload_pd[payload_pd.license.isin(conflict_licenses)].copy()
-        conflict_license_records["pkg-ver"] = conflict_license_records.package + "-" + conflict_license_records.version
-        conflict_response = conflict_license_records[["pkg-ver", "license"]].to_json(orient="records")
-
-    response = {"stack_license": s_license, "conflict_license": conflict_response, "outlier_license": ""}
-
-    return response
 
 def get_conflict_licenses(license_graph, list_of_licenses):
     conflict_licenses = []
@@ -259,14 +255,20 @@ def get_conflict_licenses(license_graph, list_of_licenses):
 
     return list(set(conflict_licenses))
 
+
+
 def licenses_avl(list_of_licenses):
     license_diff = list(set(list_of_licenses) - set(available_licenses))
     if len(license_diff) > 0:
-        print "The following licenses aren't available. Please check back later"
-        print license_diff
+        print
+        "The following licenses aren't available. Please check back later"
+        print
+        license_diff
         return 1
     else:
         return 0
+
+
 
 def create_df(payload):
     df = pd.DataFrame({"package": [],
@@ -281,4 +283,129 @@ def create_df(payload):
         df = pd.concat([df, df_to_append], ignore_index=True)
 
     return df
+
+
+
+def get_outlier_licenses(payload_pd, s_license):
+    """
+    Given list of licenses, find the license(s) that cause the stack license to become more restrictive
+    """
+    outlier_license_with_category = pd.merge(payload_pd, 
+                                            license_master_df,
+                                            how = "inner",
+                                            on= "license")
+    #print "\n"
+    #print outlier_license_with_category
+    #print "\n"
+    #print "Stack license:", s_license
+    
+    stack_license_rank = license_master_df.loc[license_master_df.license==s_license, "cat_rank"]
+    #print "stack rank:", stack_license_rank.iloc[0]
+    #print "\n"
+    stack_rank = stack_license_rank.iloc[0]
+    
+    license_counts = outlier_license_with_category.groupby("cat_rank")["cat_rank"].count()
+    license_counts = pd.DataFrame(license_counts)
+    license_counts.columns = ["rank_count"]
+    license_counts = license_counts.reset_index()
+    #print "license counts", license_counts
+
+    #print "\n"
+    #print "... \n"
+    #print license_counts
+    #print "\n"
+    #print "Until here its fine", "\n"
+    #stack_rank = 5.0  # step introduced for debugging
+    stack_license_count_in_stack = license_counts[license_counts.cat_rank==stack_rank].rank_count
+    
+    if len(stack_license_count_in_stack) > 0:
+        stack_license_count = stack_license_count_in_stack.iloc[0]
+        max_stack_rank = stack_rank
+        max_count = stack_license_count  
+        
+    else:
+        stack_license_count = 0
+        max_stack_rank = license_counts["cat_rank"].max()
+        max_count = license_counts[license_counts["cat_rank"] == max_stack_rank]["rank_count"].iloc[0]
+        
+
+    #print "\n", "stack license count.." , "\n", stack_license_count
+    #print "\n", "max count.." , "\n", max_count
+    #print "\n", "max stack rank.." , "\n", max_stack_rank
+    
+    #print "\n Are there outliers?: Quantify \n"
+    #print max_count , " divided by ", outlier_license_with_category.shape[0]
+    #print "\n"
+    #print float(max_count)/outlier_license_with_category.shape[0]
+    
+    if (float(max_count)/outlier_license_with_category.shape[0]) >= 0.5:
+        license_outliers = "None"
+    else:
+        license_outliers = outlier_license_with_category.loc[outlier_license_with_category.cat_rank == max_stack_rank, ["license", "package", "version"]].to_json(orient="records")
+        
+    
+    #print "\n license outliers \n"
+    #print license_outliers
+    
+    return license_outliers
+
+
+
+# This is the main function that does the scoring
+def license_scoring(payload):
+    """
+    Given packages and their respective licenses, return the license of the stack.
+    In some cases, the licenses of the packages may cause conflict. If so, return those packages.
+    Some packages may cause the license of the stack to become more restrictive. Return those outlier packages
+    """
+
+    payload_pd = create_df(payload)
+    #print payload_pd
+    list_of_licenses = list(payload_pd.license)
+
+    license_graph = create_license_graph()
+
+    # Check if input licenses are present in license graph
+    all_licenses_available_in_graph = licenses_avl(list_of_licenses)
+    conflict_response = ""
+
+    if all_licenses_available_in_graph == 1:
+        # not all licenses are available
+        s_license = "None"
+        conflict_licenses = "None"
+        outliers = "None"
+
+    else:
+
+        stack_license = license_graph.get_common_destination_license_vertex(list_of_licenses)
+
+        conflict_licenses = ""
+
+        if stack_license is None:
+            s_license = ''
+            conflict_licenses = get_conflict_licenses(license_graph, list_of_licenses)
+        else:
+            s_license = [i.id for i in stack_license][0]
+
+        #Create response for conflict licenses
+
+        if len(conflict_licenses) > 0:
+            conflict_license_records = payload_pd[payload_pd.license.isin(conflict_licenses)].copy()
+            conflict_license_records["pkg-ver"] = conflict_license_records.package + "-" + conflict_license_records.version
+            conflict_response = conflict_license_records[["pkg-ver", "license"]].to_json(orient="records")
+
+        else:
+            conflict_response = "None"
+
+        # Find outliers
+        if stack_license is None:
+            outliers = ""
+        else:
+            outliers = get_outlier_licenses(payload_pd, s_license)
+
+    # Create response object
+
+    response = {"stack_license": s_license, "conflict_license": conflict_response, "outlier_license": outliers}
+
+    return response
 
