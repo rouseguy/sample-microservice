@@ -28,7 +28,9 @@ def heart_beat():
 
 @app.route('/api/v1/stack_license', methods=['POST'])
 def stack_license():
-    input_json = request.get_json()
+    input_json = request.get_json(force=True)
+    print "This is the input"
+    print input_json
     #Need to change this
     #response = { "stack_license": "Apache 2.0",
     #    "outlier_license": [
