@@ -404,8 +404,42 @@ def license_scoring(payload):
             outliers = get_outlier_licenses(payload_pd, s_license)
 
     # Create response object
+    # Testing integration locally now. Returning dummy results (21-July-2017)
+    # Start of test result
+    s_license = "MIT License"
+    
+    conflict_response =  [
+    {
+      "package": "pkg1",
+      "version": "ver1",
+      "license": "license1"
+    },
+    {
+      "package": "pkg2",
+      "version": "ver2",
+      "license": "license2"
+    }
+    ]
 
-    response = {"stack_license": s_license, "conflict_license": conflict_response, "outlier_license": outliers}
+    outliers = [
+    {
+      "package": "pkg1",
+      "version": "ver1",
+      "license": "license1"
+    },
+    {
+      "package": "pkg2",
+      "version": "ver2",
+      "license": "license2"
+    }
+    ]
+
+    # End of test result
+
+
+
+    response = {"stack_license": s_license, "stack_license_conflict_packages": conflict_response, 
+        "stack_license_outlier_packages": outliers}
 
     return response
 
